@@ -3,15 +3,39 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import { loginSchema } from "@/features/auth/schemas/login.schema";
+
 export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
+  // errors = a map of field name → error message.
+  // Like a Map<String, String> in Java — field name is the key.
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // TODO: Call API
+    // safeParse = like @Valid in Spring Boot.
+    // Returns { success, data, error } — doesn't throw.
+    const result = loginSchema.safeParse({ email, password });
+
+    if (!result.success) {
+      // Flatten Zod errors into a simple { field: message } map
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        const field = issue.path[0] as string;
+        fieldErrors[field] = issue.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    // Validation passed — clear errors, proceed to API call
+    setErrors({});
+
+    // TODO: Call your NestJS API here
     console.log("Login submitted:", { email, password, rememberMe });
   };
 
@@ -32,7 +56,6 @@ export function LoginForm() {
             type="button"
             className="flex w-full items-center justify-center gap-3 rounded border border-[#c7c4d6]/20 bg-white px-6 py-4 shadow-sm transition-all duration-200 hover:bg-gray-50"
           >
-            {/* Google SVG icon */}
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -70,19 +93,18 @@ export function LoginForm() {
               <label className="block text-xs font-semibold tracking-wider text-[#464553] uppercase">
                 Institutional Email
               </label>
-              {/*
-                CONTROLLED INPUT: value={email} means React controls this input.
-                onChange fires on every keystroke, calling setEmail with the new value.
-                Flow: user types → onChange → setEmail → re-render → input shows new value.
-                Like two-way binding in Angular, or binding form fields to a DTO.
-              */}
               <input
-                type="email"
+                type="text"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errors.email) setErrors((prev) => ({ ...prev, email: "" }));
+                }}
                 placeholder="name@university.edu"
                 className="w-full rounded-lg border border-[#c7c4d6]/20 bg-white p-4 transition-all outline-none placeholder:text-[#777585]/50 focus:border-[#241da0] focus:ring-4 focus:ring-[#e2dfff]"
               />
+              {/* Show error if exists — like binding Errors object in Thymeleaf */}
+              {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
             </div>
 
             {/* Password field */}
@@ -93,10 +115,14 @@ export function LoginForm() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errors.password) setErrors((prev) => ({ ...prev, password: "" }));
+                }}
                 placeholder="••••••••"
                 className="w-full rounded-lg border border-[#c7c4d6]/20 bg-white p-4 transition-all outline-none placeholder:text-[#777585]/50 focus:border-[#241da0] focus:ring-4 focus:ring-[#e2dfff]"
               />
+              {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
             </div>
 
             {/* Remember me + Forgot password row */}

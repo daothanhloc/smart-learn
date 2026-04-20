@@ -3,13 +3,30 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import { registerSchema } from "@/features/auth/schemas/register.schema";
+
 export function RegisterForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const result = registerSchema.safeParse({ name, email, password });
+
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        const field = issue.path[0] as string;
+        fieldErrors[field] = issue.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setErrors({});
 
     // TODO: Call API
     console.log("Register submitted:", { name, email, password });
@@ -73,29 +90,31 @@ export function RegisterForm() {
               <input
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errors.name) setErrors({ ...errors, name: "" });
+                }}
                 placeholder="David Alcade"
                 className="w-full rounded-lg border border-[#c7c4d6]/20 bg-white p-4 transition-all outline-none placeholder:text-[#777585]/50 focus:border-[#241da0] focus:ring-4 focus:ring-[#e2dfff]"
               />
+              {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
             </div>
             {/* Email field */}
             <div className="space-y-2">
               <label className="block text-xs font-semibold tracking-wider text-[#464553] uppercase">
                 Email
               </label>
-              {/*
-                CONTROLLED INPUT: value={email} means React controls this input.
-                onChange fires on every keystroke, calling setEmail with the new value.
-                Flow: user types → onChange → setEmail → re-render → input shows new value.
-                Like two-way binding in Angular, or binding form fields to a DTO.
-              */}
               <input
-                type="email"
+                type="text"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errors.email) setErrors({ ...errors, email: "" });
+                }}
                 placeholder="name@university.edu"
                 className="w-full rounded-lg border border-[#c7c4d6]/20 bg-white p-4 transition-all outline-none placeholder:text-[#777585]/50 focus:border-[#241da0] focus:ring-4 focus:ring-[#e2dfff]"
               />
+              {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
             </div>
 
             {/* Password field */}
@@ -106,10 +125,14 @@ export function RegisterForm() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errors.password) setErrors({ ...errors, password: "" });
+                }}
                 placeholder="••••••••"
                 className="w-full rounded-lg border border-[#c7c4d6]/20 bg-white p-4 transition-all outline-none placeholder:text-[#777585]/50 focus:border-[#241da0] focus:ring-4 focus:ring-[#e2dfff]"
               />
+              {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
             </div>
 
             {/* Submit button */}
