@@ -12,7 +12,6 @@ import { env } from "@/env";
 
 import { routing } from "@/i18n/routing";
 
-import { Footer, Header } from "@/components/layout";
 import { Toaster } from "@/ui";
 import { Providers } from "@/providers";
 
