@@ -2,27 +2,32 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
+import { AxiosError } from "axios";
+
+import { authToken, refreshToken } from "@/lib/auth-token";
+
+import { authApi } from "@/features/auth/api/auth.api";
 import { loginSchema } from "@/features/auth/schemas/login.schema";
 
 export function LoginForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
-  // errors = a map of field name → error message.
-  // Like a Map<String, String> in Java — field name is the key.
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setApiError("");
 
-    // safeParse = like @Valid in Spring Boot.
-    // Returns { success, data, error } — doesn't throw.
     const result = loginSchema.safeParse({ email, password });
 
     if (!result.success) {
-      // Flatten Zod errors into a simple { field: message } map
       const fieldErrors: Record<string, string> = {};
       result.error.issues.forEach((issue) => {
         const field = issue.path[0] as string;
@@ -32,11 +37,25 @@ export function LoginForm() {
       return;
     }
 
-    // Validation passed — clear errors, proceed to API call
     setErrors({});
+    setIsLoading(true);
 
-    // TODO: Call your NestJS API here
-    console.log("Login submitted:", { email, password, rememberMe });
+    try {
+      const response = await authApi.login({ email, password });
+      authToken.set(response?.data?.access_token);
+      if (rememberMe) {
+        refreshToken.set(response?.data?.refresh_token);
+      }
+      router.push("/");
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        setApiError(error.response?.data?.message || "Invalid email or password");
+      } else {
+        setApiError("An unexpected error occurred!");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -52,6 +71,11 @@ export function LoginForm() {
 
         <div className="space-y-6">
           {/* ── GOOGLE OAUTH BUTTON ── */}
+          {apiError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+              {apiError}
+            </div>
+          )}
           <button
             type="button"
             className="flex w-full items-center justify-center gap-3 rounded border border-[#c7c4d6]/20 bg-white px-6 py-4 shadow-sm transition-all duration-200 hover:bg-gray-50"
@@ -147,10 +171,13 @@ export function LoginForm() {
             {/* Submit button */}
             <button
               type="submit"
-              className="group flex w-full items-center justify-center gap-2 rounded bg-[#241da0] py-4 font-bold text-white shadow-lg transition-all hover:bg-[#3d3bb7]"
+              disabled={isLoading}
+              className="group flex w-full items-center justify-center gap-2 rounded bg-[#241da0] py-4 font-bold text-white shadow-lg transition-all hover:bg-[#3d3bb7] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <span>Explore With Us</span>
-              <span className="text-lg transition-transform group-hover:translate-x-1">→</span>
+              {isLoading ? "Signing in..." : "Explore With Us"}
+              {!isLoading && (
+                <span className="text-lg transition-transform group-hover:translate-x-1">→</span>
+              )}
             </button>
           </form>
         </div>

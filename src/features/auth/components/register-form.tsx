@@ -2,19 +2,30 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
+import { AxiosError } from "axios";
+
+import { authToken } from "@/lib/auth-token";
+
+import { authApi } from "@/features/auth/api/auth.api";
 import { registerSchema } from "@/features/auth/schemas/register.schema";
 
 export function RegisterForm() {
-  const [name, setName] = useState("");
+  const router = useRouter();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setApiError("");
 
-    const result = registerSchema.safeParse({ name, email, password });
+    const result = registerSchema.safeParse({ fullName, email, password });
 
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
@@ -27,9 +38,21 @@ export function RegisterForm() {
     }
 
     setErrors({});
+    setIsLoading(true);
 
-    // TODO: Call API
-    console.log("Register submitted:", { name, email, password });
+    try {
+      const response = await authApi.register(result.data);
+      authToken.set(response?.data?.access_token);
+      router.push("/");
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        setApiError(error.response?.data?.message || "An error occurred");
+      } else {
+        setApiError("An unexpected error occurred!");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -45,6 +68,11 @@ export function RegisterForm() {
 
         <div className="space-y-6">
           {/* ── GOOGLE OAUTH BUTTON ── */}
+          {apiError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+              {apiError}
+            </div>
+          )}
           <button
             type="button"
             className="flex w-full items-center justify-center gap-3 rounded border border-[#c7c4d6]/20 bg-white px-6 py-4 shadow-sm transition-all duration-200 hover:bg-gray-50"
@@ -89,15 +117,15 @@ export function RegisterForm() {
               </label>
               <input
                 type="text"
-                value={name}
+                value={fullName}
                 onChange={(e) => {
-                  setName(e.target.value);
-                  if (errors.name) setErrors({ ...errors, name: "" });
+                  setFullName(e.target.value);
+                  if (errors.fullName) setErrors({ ...errors, fullName: "" });
                 }}
                 placeholder="David Alcade"
                 className="w-full rounded-lg border border-[#c7c4d6]/20 bg-white p-4 transition-all outline-none placeholder:text-[#777585]/50 focus:border-[#241da0] focus:ring-4 focus:ring-[#e2dfff]"
               />
-              {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+              {errors.fullName && <p className="text-sm text-red-500">{errors.fullName}</p>}
             </div>
             {/* Email field */}
             <div className="space-y-2">
@@ -120,7 +148,7 @@ export function RegisterForm() {
             {/* Password field */}
             <div className="space-y-2">
               <label className="block text-xs font-semibold tracking-wider text-[#464553] uppercase">
-                Create Password
+                Password
               </label>
               <input
                 type="password"
@@ -138,10 +166,13 @@ export function RegisterForm() {
             {/* Submit button */}
             <button
               type="submit"
-              className="group flex w-full items-center justify-center gap-2 rounded bg-[#241da0] py-4 font-bold text-white shadow-lg transition-all hover:bg-[#3d3bb7]"
+              disabled={isLoading}
+              className="group flex w-full items-center justify-center gap-2 rounded bg-[#241da0] py-4 font-bold text-white shadow-lg transition-all hover:bg-[#3d3bb7] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <span>Create Account</span>
-              <span className="text-lg transition-transform group-hover:translate-x-1">→</span>
+              <span>{isLoading ? "Creating account..." : "Create Account"}</span>
+              {!isLoading && (
+                <span className="text-lg transition-transform group-hover:translate-x-1">→</span>
+              )}
             </button>
           </form>
         </div>

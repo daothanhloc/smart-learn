@@ -2,7 +2,8 @@ import axios, { AxiosError, AxiosRequestConfig } from "axios";
 
 import { env } from "@/env";
 
-// FIXME: Set your API base URL and global headers
+import { authToken } from "@/lib/auth-token";
+
 export const api = axios.create({
   baseURL: env.NEXT_PUBLIC_API_URL,
   timeout: 10_000,
@@ -12,9 +13,8 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  // FIXME: Inject your auth token/header if required
-  // const token = getToken();
-  // if (token) config.headers.Authorization = `Bearer ${token}`;
+  const token = authToken.get();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
@@ -23,7 +23,7 @@ api.interceptors.response.use(
   (err) => {
     if (axios.isAxiosError(err)) return Promise.reject(err);
 
-    return Promise.reject(new AxiosError("Bilinmeyen hata"));
+    return Promise.reject(new AxiosError("Unknown error"));
   }
 );
 
