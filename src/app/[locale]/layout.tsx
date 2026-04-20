@@ -63,10 +63,10 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} flex min-h-screen w-full flex-col antialiased`}
       >
         <Providers messages={messages} locale={locale}>
-          <Header />
+          {/* <Header /> */}
           <main className="flex-1">{children}</main>
           <Toaster richColors />
-          <Footer />
+          {/* <Footer /> */}
         </Providers>
 
         {env.NEXT_PUBLIC_GA_ID && <GoogleAnalytics gaId={env.NEXT_PUBLIC_GA_ID} />}
